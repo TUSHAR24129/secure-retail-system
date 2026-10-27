@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Products | Retail Shop</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<style>
+body { font-family:'Segoe UI',sans-serif; background:#f8fafc; }
+.navbar { background:#1e293b; }
+.navbar-brand, .nav-link { color:white !important; }
+.nav-link:hover { color:#93c5fd !important; }
+.page-hero {
+    background: linear-gradient(rgba(0,0,0,.6),rgba(0,0,0,.6)), url('images/image1.jpg');
+    background-size:cover;
+    background-position:center;
+    color:white;
+    text-align:center;
+    padding:60px 20px;
+}
+.page-hero h1 { font-size:48px; font-weight:bold; }
+.product-card { transition:0.3s; border:none; border-radius:15px; }
+.product-card:hover { transform:translateY(-8px); box-shadow:0 10px 25px rgba(0,0,0,.12) !important; }
+.product-card .card-body { text-align:center; padding:25px; }
+.btn-filter.active { background:#1e293b; color:white; }
+footer { background:#1e293b; color:white; padding:20px; text-align:center; margin-top:60px; }
+</style>
+</head>
+<body>
+
+<nav class="navbar navbar-expand-lg">
+  <div class="container">
+    <a class="navbar-brand" href="index.html">🛒 Retail Shop</a>
+    <button class="navbar-toggler bg-light" type="button" data-bs-toggle="collapse" data-bs-target="#menu">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="menu">
+      <ul class="navbar-nav ms-auto">
+        <li class="nav-item"><a class="nav-link" href="index.html">Home</a></li>
+        <li class="nav-item"><a class="nav-link active" href="products.html">Products</a></li>
+        <li class="nav-item"><a class="nav-link" href="cart.html">Cart</a></li>
+        <li class="nav-item"><a class="nav-link" href="orders.html">Orders</a></li>
+        <li class="nav-item"><a class="nav-link" href="login.html">Login</a></li>
+      </ul>
+    </div>
+  </div>
+</nav>
+
+<section class="page-hero">
+  <h1>Our Products</h1>
+  <p>Fresh groceries at unbeatable prices</p>
+</section>
+
+<div class="container py-5">
+
+  <!-- Category Filter -->
+  <div class="mb-4 text-center" id="category-filters">
+    <button class="btn btn-outline-dark me-2 btn-filter active" onclick="filterCategory(null, this)">All</button>
+  </div>
+
+  <!-- Alert -->
+  <div id="alert-box" class="alert alert-success d-none"></div>
+
+  <!-- Products Grid -->
+  <div class="row g-4" id="products-grid">
+    <div class="col-12 text-center py-5">
+      <div class="spinner-border text-secondary" role="status"></div>
+      <p class="mt-2 text-muted">Loading products...</p>
+    </div>
+  </div>
+
+</div>
+
+<footer>
+  <p>© 2026 Retail Shop | All Rights Reserved</p>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+const API = 'http://localhost:3000';
+let allProducts = [];
+let activeCategoryId = null;
+
+// Load categories into filter buttons
+async function loadCategories() {
+  try {
+    const res = await fetch(`${API}/api/categories`);
+    const data = await res.json();
+    const bar = document.getElementById('category-filters');
+    data.categories.forEach(cat => {
+      const btn = document.createElement('button');
+      btn.className = 'btn btn-outline-dark me-2 mb-2 btn-filter';
+      btn.textContent = cat.name;
+      btn.onclick = () => filterCategory(cat.id, btn);
+      bar.appendChild(btn);
+    });
+  } catch (e) {
+    console.error('Failed to load categories', e);
+  }
+}
+
+// Load all products
+async function loadProducts() {
+  try {
+    const res = await fetch(`${API}/api/products`);
+    const data = await res.json();
+    allProducts = data.products;
+    renderProducts(allProducts);
+  } catch (e) {
+    document.getElementById('products-grid').innerHTML = `
+      <div class="col-12 text-center py-5">
+        <h4 class="text-muted">Could not connect to the API.</h4>
+        <p>Make sure your server is running: <code>node server.js</code></p>
+      </div>`;
+  }
+}
+
+// Filter by category
+function filterCategory(categoryId, btn) {
+  activeCategoryId = categoryId;
+  document.querySelectorAll('.btn-filter').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  if (categoryId === null) {
+    renderProducts(allProducts);
+  } else {
+    renderProducts(allProducts.filter(p => {
+      // match by category name since we store category name in products
+      return p.category_id === categoryId || p.category === btn.textContent;
+    }));
+  }
+}
+
+// Render product cards
+function renderProducts(products) {
+  const grid = document.getElementById('products-grid');
+  if (products.length === 0) {
+    grid.innerHTML = `
+      <div class="col-12 text-center py-5">
+        <h4 class="text-muted">No products in this category.</h4>
+      </div>`;
+    return;
+  }
+  grid.innerHTML = products.map(p => `
+    <div class="col-md-4">
+      <div class="card product-card shadow">
+        ${p.image_url
+          ? `<img src="${p.image_url}" class="card-img-top" style="height:200px;object-fit:cover;" alt="${p.name}">`
+          : `<div class="bg-light d-flex align-items-center justify-content-center" style="height:200px;font-size:48px;">🛒</div>`
+        }
+        <div class="card-body">
+          <span class="badge bg-secondary mb-2">${p.category}</span>
+          <h5>${p.name}</h5>
+          <p class="text-muted small">${p.description || ''}</p>
+          <p class="fw-bold fs-5 text-success">$${parseFloat(p.price).toFixed(2)} <small class="text-muted fw-normal fs-6">/ ${p.unit}</small></p>
+          ${p.stock > 0
+            ? `<button class="btn btn-success w-100" onclick="addToCart(${p.id}, '${p.name}')">Add To Cart</button>`
+            : `<button class="btn btn-secondary w-100" disabled>Out of Stock</button>`
+          }
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+// Add to cart (user_id 3 = john, change as needed)
+async function addToCart(productId, productName) {
+  const userId = localStorage.getItem('userId') || 3;
+  try {
+    const res = await fetch(`${API}/api/cart/${userId}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ product_id: productId, quantity: 1 })
+    });
+    if (res.ok) {
+      showAlert(`✅ ${productName} added to cart!`);
+    } else {
+      showAlert(`❌ Failed to add to cart.`, 'danger');
+    }
+  } catch (e) {
+    showAlert('❌ Could not connect to server.', 'danger');
+  }
+}
+
+function showAlert(msg, type = 'success') {
+  const box = document.getElementById('alert-box');
+  box.className = `alert alert-${type}`;
+  box.textContent = msg;
+  box.classList.remove('d-none');
+  setTimeout(() => box.classList.add('d-none'), 3000);
+}
+
+// Init
+loadCategories();
+loadProducts();
+</script>
+</body>
+</html>
